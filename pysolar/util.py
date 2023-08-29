@@ -96,9 +96,9 @@ def get_sunrise_sunset_transit(latitude_deg, longitude_deg, when):
         utc_offset = 0
     #end if
 
-    # hours (ignore DST) time diff between UTC and the standard meridian for the input longitude 
+    # hours (ignore DST) time diff between UTC and the standard meridian for the input longitude
     time_diff = int(round(longitude_deg / 15., 0) - utc_offset / 3600)
-    # the day, and therefore sunrise and sunset, may be different at the input longitude than at the input "when" 
+    # the day, and therefore sunrise and sunset, may be different at the input longitude than at the input "when"
     local_time = when - timedelta(seconds = utc_offset) + timedelta(hours = time_diff)
 
     day = local_time.timetuple().tm_yday # Day of the year
@@ -333,6 +333,43 @@ def solarelevation_function_clear(latitude_deg, longitude_deg, when, temperature
     return (0.038175 + (1.5458 * (math.sin(altitude))) + ((-0.59980) * (0.5 * (1 - math.cos(2 * (altitude))))))
 
 @check_aware_dt('when')
+def solarelevation_function_clear_fast(latitude_deg, longitude_deg, when, temperature = constants.standard_temperature,
+                                  pressure = constants.standard_pressure,  elevation = elevation_default):
+    """Equation calculates Solar elevation function for clear sky type.
+
+    Parameters
+    ----------
+    latitude_deg : float
+        latitude in decimal degree. A geographical term denoting
+        the north/south angular location of a place on a sphere.
+    longitude_deg : float
+        longitude in decimal degree. Longitude shows your location
+        in an east-west direction,relative to the Greenwich meridian.
+    when : datetime.datetime
+        date/time for which to do the calculation
+    temperature : float
+        atmospheric temperature in kelvin
+   pressure : float
+        pressure in pascals
+    elevation : float
+        The elevation of a geographic location is its height above a fixed reference point, often the mean
+        sea level.
+
+    Returns
+    -------
+    SOLALTC : float
+        Solar elevation function clear sky
+
+    References
+    ----------
+    .. [1] S. Younes, R.Claywell and el al,"Quality control of solar radiation data: present status
+            and proposed new approaches", energy 30 (2005), pp 1533 - 1549.
+
+    """
+    altitude = solar.get_altitude_fast(latitude_deg, longitude_deg,when, elevation, temperature,pressure)
+    return (0.038175 + (1.5458 * (math.sin(altitude))) + ((-0.59980) * (0.5 * (1 - math.cos(2 * (altitude))))))
+
+@check_aware_dt('when')
 def solarelevation_function_overcast(latitude_deg, longitude_deg, when,
                                      elevation = elevation_default, temperature = constants.standard_temperature,
                                      pressure = constants.standard_pressure):
@@ -374,6 +411,50 @@ def solarelevation_function_overcast(latitude_deg, longitude_deg, when,
 
     """
     altitude = solar.get_altitude(latitude_deg, longitude_deg,when, elevation, temperature,pressure)
+    return ((-0.0067133) + (0.78600 * (math.sin(altitude)))) + (0.22401 * (0.5 * (1 - math.cos(2 * altitude))))
+
+@check_aware_dt('when')
+def solarelevation_function_overcast_fast(latitude_deg, longitude_deg, when,
+                                     elevation = elevation_default, temperature = constants.standard_temperature,
+                                     pressure = constants.standard_pressure):
+    """ The function calculates solar elevation function for overcast sky type.
+    This associated hourly overcast radiation model is based on the estimation of the
+    overcast sky transmittance with the sun directly overhead combined with the application
+    of an over sky elavation function to estimate the overcast day global irradiation
+    value at any solar elevation.
+
+    Parameters
+    ----------
+    latitude_deg : float
+        latitude in decimal degree. A geographical term denoting the north/south angular location of a place on a
+        sphere.
+    longitude_deg : float
+        longitude in decimal degree. Longitude shows your location in an east-west direction,relative to the
+        Greenwich meridian.
+    when : datetime.datetime
+        date/time for which to do the calculation
+    elevation : float
+        The elevation of a geographic location is its height above a fixed reference point, often the mean sea level.
+    temperature : float
+        atmospheric temperature in kelvin
+    pressure : float
+        pressure in pascals
+
+    Returns
+    -------
+    SOLALTO : float
+        Solar elevation function overcast
+
+    References
+    ----------
+    .. [1] Prof. Peter Tregenza,"Solar radiation and daylight models", p.89.
+
+    .. [2] Also accessible through Google Books: http://tinyurl.com/5kdbwu
+        Tariq Muneer, "Solar Radiation and Daylight Models, Second Edition: For the Energy Efficient
+        Design of Buildings"
+
+    """
+    altitude = solar.get_altitude_fast(latitude_deg, longitude_deg,when, elevation, temperature,pressure)
     return ((-0.0067133) + (0.78600 * (math.sin(altitude)))) + (0.22401 * (0.5 * (1 - math.cos(2 * altitude))))
 
 
@@ -441,6 +522,46 @@ def diffuse_underclear(latitude_deg, longitude_deg, when, elevation = elevation_
     return mean_earth_sun_distance(when) * DT * altitude
 
 @check_aware_dt('when')
+def diffuse_underclear_fast(latitude_deg, longitude_deg, when, elevation = elevation_default,
+                       temperature = constants.standard_temperature, pressure = constants.standard_pressure, TL=TL_default):
+    """Equation calculates diffuse radiation under clear sky conditions.
+
+    Parameters
+    ----------
+    latitude_deg : float
+        latitude in decimal degree. A geographical term denoting the north/south angular location of a place on
+        a sphere.
+    longitude_deg : float
+        longitude in decimal degree. Longitude shows your location in an east-west direction,relative to the
+        Greenwich meridian.
+    when : datetime.datetime
+        date/time for which to do the calculation
+    elevation : float
+        The elevation of a geographic location is its height above a fixed reference point, often the mean sea level.
+    temperature : float
+        atmospheric temperature in kelvin
+    pressure : float
+        pressure in pascals
+    TL : float
+        Linke turbidity factor
+
+    Returns
+    -------
+    DIFFC : float
+        Diffuse Irradiation under clear sky
+
+    References
+    ----------
+    .. [1] S. Younes, R.Claywell and el al,"Quality control of solar radiation data: present status and proposed
+            new approaches", energy 30 (2005), pp 1533 - 1549.
+
+    """
+    DT = ((-21.657) + (41.752 * (TL)) + (0.51905 * (TL) * (TL)))
+    altitude = solar.get_altitude_fast(latitude_deg, longitude_deg,when, elevation, temperature,pressure)
+
+    return mean_earth_sun_distance(when) * DT * altitude
+
+@check_aware_dt('when')
 def diffuse_underovercast(latitude_deg, longitude_deg, when, elevation = elevation_default,
                           temperature = constants.standard_temperature, pressure = constants.standard_pressure,TL=TL_default):
     """Function calculates the diffuse radiation under overcast conditions.
@@ -483,8 +604,50 @@ def diffuse_underovercast(latitude_deg, longitude_deg, when, elevation = elevati
     return DIFOC
 
 @check_aware_dt('when')
+def diffuse_underovercast_fast(latitude_deg, longitude_deg, when, elevation = elevation_default,
+                          temperature = constants.standard_temperature, pressure = constants.standard_pressure,TL=TL_default):
+    """Function calculates the diffuse radiation under overcast conditions.
+
+    Parameters
+    ----------
+    latitude_deg : float
+        latitude in decimal degree. A geographical term denoting the north/south angular location of a place on a
+        sphere.
+    longitude_deg : float
+        longitude in decimal degree. Longitude shows your location in an east-west direction,relative to the
+        Greenwich meridian.
+    when : datetime.datetime
+        date/time for which to do the calculation
+    elevation : float
+        The elevation of a geographic location is its height above a fixed reference point, often the mean sea level.
+    temperature : float
+        atmospheric temperature in kelvin
+    pressure : float
+        pressure in pascals
+    TL : float
+        Linke turbidity factor
+
+    Returns
+    -------
+    DIFOC : float
+        Diffuse Irradiation under overcast
+
+    References
+    ----------
+    .. [1] S. Younes, R.Claywell and el al,"Quality control of solar radiation data: present status and proposed
+            new approaches", energy 30 (2005), pp 1533 - 1549.
+
+    """
+    DT = ((-21.657) + (41.752 * (TL)) + (0.51905 * (TL) * (TL)))
+
+    DIFOC = ((mean_earth_sun_distance(when)
+              )*(DT)*(solar.get_altitude_fast(latitude_deg,longitude_deg, when, elevation,
+                                        temperature, pressure)))
+    return DIFOC
+
+@check_aware_dt('when')
 def direct_underclear(latitude_deg, longitude_deg, when,
-                      TY = TY_default, AM = AM_default, TL = TL_default, elevation = elevation_default, 
+                      TY = TY_default, AM = AM_default, TL = TL_default, elevation = elevation_default,
                       temperature = constants.standard_temperature, pressure = constants.standard_pressure):
     """Equation calculates direct radiation under clear sky conditions.
 
@@ -537,8 +700,64 @@ def direct_underclear(latitude_deg, longitude_deg, when,
     return DIRC
 
 @check_aware_dt('when')
+
+@check_aware_dt('when')
+def direct_underclear_fast(latitude_deg, longitude_deg, when,
+                      TY = TY_default, AM = AM_default, TL = TL_default, elevation = elevation_default,
+                      temperature = constants.standard_temperature, pressure = constants.standard_pressure):
+    """Equation calculates direct radiation under clear sky conditions.
+
+    Parameters
+    ----------
+    latitude_deg : float
+        latitude in decimal degree. A geographical term denoting the north/south angular location of a
+        place on a sphere.
+    longitude_deg : float
+        longitude in decimal degree. Longitude shows your location in an east-west direction,relative to the
+        Greenwich meridian.
+    when : datetime.datetime
+        date/time for which to do the calculation
+    TY : float
+        Total number of days in a year. eg. 365 days per year,(no leap days)
+    AM : float
+        Air mass. An Air Mass is a measure of how far light travels through the Earth's atmosphere. One air mass,
+        or AM1, is the thickness of the Earth's atmosphere. Air mass zero (AM0) describes solar irradiance in space,
+        where it is unaffected by the atmosphere. The power density of AM1 light is about 1,000 W/m^2
+    TL : float
+        Linke turbidity factor
+    elevation : float
+        The elevation of a geographic location is its height above a fixed reference point, often the mean
+        sea level.
+    temperature : float
+        atmospheric temperature in kelvin
+    pressure : float
+        pressure in pascals
+
+    Returns
+    -------
+    DIRC : float
+        Direct Irradiation under clear
+
+    References
+    ----------
+    .. [1] S. Younes, R.Claywell and el al,"Quality control of solar radiation data: present status and proposed
+           new approaches", energy 30 (2005), pp 1533 - 1549.
+
+    """
+    KD = mean_earth_sun_distance(when)
+
+    DEC = declination_degree(when,TY)
+
+    DIRC = (1367 * KD * math.exp(-0.8662 * (AM) * (TL) * (DEC)
+                             ) * math.sin(solar.get_altitude_fast(latitude_deg,longitude_deg,
+                                                          when,elevation ,
+                                                          temperature , pressure )))
+
+    return DIRC
+
+@check_aware_dt('when')
 def global_irradiance_clear(latitude_deg, longitude_deg, when,
-                            TY = TY_default, AM = AM_default, TL = TL_default, elevation = elevation_default, 
+                            TY = TY_default, AM = AM_default, TL = TL_default, elevation = elevation_default,
                             temperature = constants.standard_temperature, pressure = constants.standard_pressure):
 
     """Equation calculates global irradiance under clear sky conditions.
@@ -589,7 +808,7 @@ def global_irradiance_clear(latitude_deg, longitude_deg, when,
                               pressure = constants.standard_pressure)
 
     DIFFC = diffuse_underclear(latitude_deg, longitude_deg, when,
-                               elevation, temperature = constants.standard_temperature, 
+                               elevation, temperature = constants.standard_temperature,
                                pressure= constants.standard_pressure)
 
     ghic = (DIRC + DIFFC)
@@ -637,6 +856,50 @@ def global_irradiance_overcast(latitude_deg, longitude_deg, when,
 
     """
     ghioc = (572 * (solar.get_altitude(latitude_deg, longitude_deg, when,
+                                    elevation , temperature , pressure )))
+
+    return ghioc
+
+@check_aware_dt('when')
+def global_irradiance_overcast_fast(latitude_deg, longitude_deg, when,
+                               elevation = elevation_default, temperature = constants.standard_temperature,
+                               pressure = constants.standard_pressure):
+    """Calculated Global is used to compare to the Diffuse under overcast conditions.
+    Under overcast skies, global and diffuse are expected to be equal due to the absence of the beam
+    component.
+
+    Parameters
+    ----------
+    latitude_deg : float
+        latitude in decimal degree. A geographical term denoting the north/south angular location of a
+        place on a sphere.
+    longitude_deg : float
+        longitude in decimal degree. Longitude shows your location in an east-west direction,relative
+        to the Greenwich meridian.
+    when : datetime.datetime
+        date/time for which to do the calculation
+    elevation : float
+        The elevation of a geographic location is its height above a fixed reference point, often the
+        mean sea level.
+    temperature : float
+        atmospheric temperature in kelvin
+    pressure : float
+        pressure in pascals
+
+    Returns
+    -------
+    ghioc : float
+        Global Irradiation under overcast sky
+
+    References
+    ----------
+    .. [1] S. Younes, R.Claywell and el al, "Quality
+            control of solar radiation data: present status
+            and proposed new approaches", energy 30
+            (2005), pp 1533 - 1549.
+
+    """
+    ghioc = (572 * (solar.get_altitude_fast(latitude_deg, longitude_deg, when,
                                     elevation , temperature , pressure )))
 
     return ghioc
